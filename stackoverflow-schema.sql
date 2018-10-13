@@ -5,20 +5,59 @@ USE stackoverflow;
 
 
 --
---  1. Table structure for table `user_data`
+--  1. Table structure for table `user_credential`
 --
 
-DROP TABLE IF EXISTS `user_data`;
+DROP TABLE IF EXISTS `userCredential`;
 
-CREATE TABLE user_data(
-    `ID` INT NOT NULL AUTO_INCREMENT,
-    `Name` VARCHAR(50) NOT NULL,
+CREATE TABLE userCredential(
+    `UserID` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `Contact_No` VARCHAR(13) NOT NULL UNIQUE,
+    `Email` VARCHAR(60) NOT NULL UNIQUE,
     `Password` VARCHAR(20) NOT NULL,
-    `Contact_No` VARCHAR(13) NOT NULL,
-    `Email` VARCHAR(60) NOT NULL,
+    `Role` ENUM('Admin', 'User'), 
+    
+    PRIMARY KEY(`UserID`)
 
-    UNIQUE (`Name`),
-    PRIMARY KEY(ID)
+)AUTO_INCREMENT = 1000 ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+--
+--  1.1 Table structure for table `userProfile`
+--
+
+
+DROP TABLE IF EXISTS `userProfile`;
+
+CREATE TABLE userProfile(
+    `StackID` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `Name` VARCHAR(100) NOT NULL,
+    `Image`  VARCHAR(200) DEFAULT'-',
+    `Country` VARCHAR(50) NOT NULL,
+    `Sex` ENUM('MALE', 'FEMALE'),
+    `DOB` DATE,
+
+    PRIMARY KEY(`StackID`)
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+--
+--  1.2 User authentication mapping
+--
+
+
+DROP TABLE IF EXISTS `userAccesMapping`;
+
+CREATE TABLE userAccesMapping(
+    `Credential_UserID` INT UNSIGNED NOT NULL,
+    `Profile_StackID` INT UNSIGNED NOT NULL,
+    `AuthToken` VARCHAR(300) UNIQUE DEFAULT '-',
+    `AuthToken_Creation` TIMESTAMP,
+
+    
+    CONSTRAINT `fk_uam_profilestackid` FOREIGN KEY (`Profile_StackID`) REFERENCES `userProfile` (`StackID`) ON UPDATE CASCADE,
+    CONSTRAINT `fk_uam_credential_userid` FOREIGN KEY (`Credential_UserID`) REFERENCES `userCredential` (`UserID`) ON UPDATE CASCADE
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -31,27 +70,26 @@ CREATE TABLE user_data(
 DROP TABLE IF EXISTS `queryTopic`;
 
 CREATE TABLE `queryTopic`(
-    `TagName` VARCHAR(50) NOT NULL,
+    `ID` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `TagName` VARCHAR(100) NOT NULL,
     
-    PRIMARY KEY(`TagName`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;;
-
-
+    PRIMARY KEY(`ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
---  3. Table structure for table `queryResponse`
+--  2. Table structure for table `querySubTopic`
 --
 
-DROP TABLE IF EXISTS `queryResponse`;
+DROP TABLE IF EXISTS `querySubTopic`;
 
-CREATE TABLE `queryResponse`(
-    `ID` INT NOT NULL AUTO_INCREMENT,
-    `UserID` INT NOT NULL,
-    `Code` MEDIUMTEXT NOT NULL,
-    `ResponseDescription` MEDIUMTEXT NOT NULL,
+CREATE TABLE `querySubTopic`(
+    `ID` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `TagName` VARCHAR(100) NOT NULL,
+    `Super_TagID` INT UNSIGNED,
     
-    PRIMARY KEY(ID),
-    CONSTRAINT `fk_qr_userid` FOREIGN KEY (`UserID`) REFERENCES `user_data` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE
+    PRIMARY KEY(`ID`),
+    CONSTRAINT `fk_qst_supertagid` FOREIGN KEY (`Super_TagID`) REFERENCES `queryTopic` (`ID`) ON UPDATE CASCADE
+
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
@@ -64,64 +102,75 @@ DROP TABLE IF EXISTS `question`;
 
 
 CREATE TABLE `question` (
-  `ID` INT NOT NULL AUTO_INCREMENT,
-  `Tag` VARCHAR(50) NOT NULL,
-  `QueryHeading` VARCHAR(300) NOT NULL, 
-  `Author` VARCHAR(50) NOT NULL,
-  `CodeID` INT NOT NULL,
+  `ID` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `Title` VARCHAR(300) NOT NULL,
+  `BodyText` MEDIUMTEXT NOT NULL, 
+  `AuthorID` INT UNSIGNED NOT NULL,
   `Vote` INT NOT NULL DEFAULT 0,
 
   PRIMARY KEY (`ID`),
-  CONSTRAINT `fk_q_author` FOREIGN KEY (`Author`) REFERENCES `user_data` (`Name`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_q_tag` FOREIGN KEY (`Tag`) REFERENCES `queryTopic` (`TagName`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_q_codeid` FOREIGN KEY (`CodeID`) REFERENCES `queryResponse` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE
+  CONSTRAINT `fk_q_author` FOREIGN KEY (`AuthorID`) REFERENCES `userProfile` (`StackID`) ON DELETE RESTRICT
   
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
 
 --
---  5. Table structure for table `answer`
+--  2.1 Question tag mapping
+--
+
+DROP TABLE IF EXISTS `questionTagMapping`;
+
+CREATE TABLE `questionTagMapping`(
+    `QuestionID`INT UNSIGNED NOT NULL,
+    `TagID`INT UNSIGNED NOT NULL,
+    
+    
+    CONSTRAINT `fk_qtm_questionid` FOREIGN KEY (`QuestionID`) REFERENCES `question` (`ID`) ON DELETE CASCADE,
+    CONSTRAINT `fk_qtm_tagID` FOREIGN KEY (`TagID`) REFERENCES `querySubTopic`(`ID`) ON DELETE CASCADE
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+
+--
+--  3. Table structure for table `answer`
 --
 
 DROP TABLE IF EXISTS `answer`;
 
 CREATE TABLE `answer`(
-    `ID` INT NOT NULL AUTO_INCREMENT,
-    `UserID` INT NOT NULL,
-    `QueryID` INT NOT NULL,
-    `ResponseID` INT NOT NULL,
-    `Upvote` INT NOT NULL DEFAULT 0,
-     
-     PRIMARY KEY(`ID`),
-     CONSTRAINT `fk_ans_queryid` FOREIGN KEY (`QueryID`) REFERENCES `question` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE,
-     CONSTRAINT `fk_ans_responseid` FOREIGN KEY (`ResponseID`) REFERENCES `queryResponse` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE,
-     CONSTRAINT `fk_ans_userid` FOREIGN KEY (`UserID`) REFERENCES `user_data` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE
-
-)  ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-
-
---
---  6. Table structure for table `user_activity`
---
-
-DROP TABLE IF EXISTS `user_activity`;
-
-CREATE TABLE `user_activity`(
-    `ID` INT NOT NULL AUTO_INCREMENT,
-    `UserID` INT NOT NULL,
-    `Bookmark` INT NOT NULL,
-    `UserQueryID` INT NOT NULL,
-    `UserResponseID` INT NOT NULL,
+    `QueryID` INT  UNSIGNED NOT NULL,
+    `UserID` INT  UNSIGNED NOT NULL,
+    `BodyText` MEDIUMTEXT NOT NULL,
+    `Vote` INT NOT NULL DEFAULT 0,
     
-    PRIMARY KEY(ID),
-    CONSTRAINT `fk_ua_userid` FOREIGN KEY (`UserID`) REFERENCES `user_data` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT `fk_ua_bookmark` FOREIGN KEY (`Bookmark`) REFERENCES `question` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT `fk_ua_userqueryid` FOREIGN KEY (`UserQueryID`) REFERENCES `question` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT `fk_ua_userresponseid` FOREIGN KEY (`UserResponseID`) REFERENCES `queryResponse` (`ID`) ON DELETE RESTRICT ON UPDATE CASCADE
-
+    CONSTRAINT `fk_qr_queryid` FOREIGN KEY (`QueryID`) REFERENCES `question` (`ID`) ON DELETE CASCADE,
+    CONSTRAINT `fk_qr_userid` FOREIGN KEY (`UserID`) REFERENCES `userProfile` (`StackID`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+
+
+
+
+
+
+--
+--  5. Table structure for table `user_activity`
+--
+
+DROP TABLE IF EXISTS `userBookmarkMapping`;
+
+CREATE TABLE `userBookmarkMapping`(
+    `UserID` INT  UNSIGNED NOT NULL,
+    `QuestionID` INT UNSIGNED NOT NULL,
+    
+    CONSTRAINT `fk_ubm_userid` FOREIGN KEY (`UserID`) REFERENCES `userProfile`(`StackID`) ON DELETE CASCADE,
+    CONSTRAINT `fk_ubm_questionid` FOREIGN KEY (`QuestionID`) REFERENCES `question`(`ID`) ON DELETE CASCADE
+    
+)ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
 
 
 
